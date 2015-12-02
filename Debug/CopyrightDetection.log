@@ -1,0 +1,33 @@
+﻿Build started 2015/12/1 16:40:36.
+     1>Project "C:\Users\Administrator\Documents\Visual Studio 2012\Projects\CopyrightDetection\CopyrightDetection\CopyrightDetection.vcxproj" on node 2 (Build target(s)).
+     1>ClCompile:
+         E:\VisualStudio2012Express\VC\bin\CL.exe /c /ZI /nologo /W3 /WX- /Od /Oy- /D WIN32 /D _DEBUG /D _CONSOLE /D _UNICODE /D UNICODE /Gm /EHsc /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Fo"Debug\\" /Fd"Debug\vc110.pdb" /Gd /TP /analyze- /errorReport:prompt VideoClipDetection.cpp
+         VideoClipDetection.cpp
+     1>c:\users\administrator\documents\visual studio 2012\projects\copyrightdetection\copyrightdetection\plot.h(266): warning C4244: 'argument' : conversion from 'double' to 'int', possible loss of data
+     1>c:\users\administrator\documents\visual studio 2012\projects\copyrightdetection\copyrightdetection\videoclipdetection.cpp(79): warning C4018: '<' : signed/unsigned mismatch
+     1>c:\users\administrator\documents\visual studio 2012\projects\copyrightdetection\copyrightdetection\videoclipdetection.cpp(81): warning C4018: '>' : signed/unsigned mismatch
+     1>c:\users\administrator\documents\visual studio 2012\projects\copyrightdetection\copyrightdetection\videoclipdetection.cpp(172): warning C4018: '<' : signed/unsigned mismatch
+     1>c:\users\administrator\documents\visual studio 2012\projects\copyrightdetection\copyrightdetection\videoclipdetection.cpp(338): warning C4244: 'initializing' : conversion from 'double' to 'int', possible loss of data
+     1>c:\users\administrator\documents\visual studio 2012\projects\copyrightdetection\copyrightdetection\videoclipdetection.cpp(566): warning C4244: 'initializing' : conversion from 'double' to 'int', possible loss of data
+     1>c:\users\administrator\documents\visual studio 2012\projects\copyrightdetection\copyrightdetection\videoclipdetection.cpp(567): warning C4244: 'initializing' : conversion from 'double' to 'int', possible loss of data
+     1>c:\users\administrator\documents\visual studio 2012\projects\copyrightdetection\copyrightdetection\videoclipdetection.cpp(568): warning C4244: 'initializing' : conversion from 'double' to 'int', possible loss of data
+     1>c:\users\administrator\documents\visual studio 2012\projects\copyrightdetection\copyrightdetection\videoclipdetection.cpp(604): warning C4244: 'argument' : conversion from 'double' to 'int', possible loss of data
+     1>c:\users\administrator\documents\visual studio 2012\projects\copyrightdetection\copyrightdetection\videoclipdetection.cpp(575): warning C4101: 'best_frame_index' : unreferenced local variable
+     1>c:\users\administrator\documents\visual studio 2012\projects\copyrightdetection\copyrightdetection\videoclipdetection.cpp(731): warning C4244: 'initializing' : conversion from 'double' to 'int', possible loss of data
+     1>c:\users\administrator\documents\visual studio 2012\projects\copyrightdetection\copyrightdetection\videoclipdetection.cpp(732): warning C4244: 'initializing' : conversion from 'double' to 'int', possible loss of data
+     1>c:\users\administrator\documents\visual studio 2012\projects\copyrightdetection\copyrightdetection\videoclipdetection.cpp(779): warning C4244: 'initializing' : conversion from 'double' to 'int', possible loss of data
+     1>c:\users\administrator\documents\visual studio 2012\projects\copyrightdetection\copyrightdetection\videoclipdetection.cpp(867): warning C4244: 'initializing' : conversion from 'double' to 'int', possible loss of data
+     1>c:\users\administrator\documents\visual studio 2012\projects\copyrightdetection\copyrightdetection\videoclipdetection.cpp(871): warning C4244: 'initializing' : conversion from 'double' to 'int', possible loss of data
+     1>c:\users\administrator\documents\visual studio 2012\projects\copyrightdetection\copyrightdetection\videoclipdetection.cpp(1104): warning C4129: 'G' : unrecognized character escape sequence
+     1>c:\users\administrator\documents\visual studio 2012\projects\copyrightdetection\copyrightdetection\videoclipdetection.cpp(1112): warning C4129: 'G' : unrecognized character escape sequence
+     1>c:\users\administrator\documents\visual studio 2012\projects\copyrightdetection\copyrightdetection\videoclipdetection.cpp(1113): warning C4129: 'G' : unrecognized character escape sequence
+       Link:
+         E:\VisualStudio2012Express\VC\bin\link.exe /ERRORREPORT:PROMPT /OUT:"C:\Users\Administrator\Documents\Visual Studio 2012\Projects\CopyrightDetection\Debug\CopyrightDetection.exe" /INCREMENTAL /NOLOGO opencv_calib3d2411d.lib opencv_contrib2411d.lib opencv_core2411d.lib opencv_features2d2411d.lib opencv_flann2411d.lib opencv_gpu2411d.lib opencv_highgui2411d.lib opencv_imgproc2411d.lib opencv_legacy2411d.lib opencv_ml2411d.lib opencv_nonfree2411d.lib opencv_objdetect2411d.lib opencv_ocl2411d.lib opencv_photo2411d.lib opencv_stitching2411d.lib opencv_superres2411d.lib opencv_ts2411d.lib opencv_video2411d.lib opencv_videostab2411d.lib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"C:\Users\Administrator\Documents\Visual Studio 2012\Projects\CopyrightDetection\Debug\CopyrightDetection.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /DYNAMICBASE /NXCOMPAT /IMPLIB:"C:\Users\Administrator\Documents\Visual Studio 2012\Projects\CopyrightDetection\Debug\CopyrightDetection.lib" /MACHINE:X86 Debug\cvplot.obj
+         Debug\stdafx.obj
+         Debug\VideoClipDetection.obj
+         CopyrightDetection.vcxproj -> C:\Users\Administrator\Documents\Visual Studio 2012\Projects\CopyrightDetection\Debug\CopyrightDetection.exe
+     1>Done Building Project "C:\Users\Administrator\Documents\Visual Studio 2012\Projects\CopyrightDetection\CopyrightDetection\CopyrightDetection.vcxproj" (Build target(s)).
+
+Build succeeded.
+
+Time Elapsed 00:00:03.08
