@@ -352,6 +352,7 @@ void PersistOnDisk(VideoCapture capture, string file_name, int downsample_rate)
 			continue;
 		}
 
+
 		Rect rect = get_croped_mat(store_mat);
 		Mat croped_mat = store_mat(rect);
 
@@ -1039,20 +1040,6 @@ void preprocessing(char* video_path, char* output_folder_name)
 	long i = 10000000L; 
 	start = clock();
 
-	/*
-	char* video_path = "F:\\referenceMKV.mp4";
-	PersistOnDisk(video_path,"007",20);
-
-	video_path = "F:\\GOT01.mp4";
-	PersistOnDisk(video_path,"ThroneOfPower01",20);
-
-	video_path = "F:\\GOT02.mp4";
-	PersistOnDisk(video_path,"ThroneOfPower02",20);
-
-	video_path = "F:\\GOT03.mp4";
-	PersistOnDisk(video_path,"ThroneOfPower03",20);
-	*/
-
 	PersistOnDisk(video_path,output_folder_name,DOWNSAMPLE_RATE);
 
 	finish = clock(); 
@@ -1218,8 +1205,8 @@ int _tmain(int argc, _TCHAR* argv[])
 
 	char* video_path1 = "F:\GOT01.mp4";
 	char* video_path2 = "F:\GOT02.mp4";
-	//preprocessing(video_path1,"GameOfThroneS05Ep01");
-	//preprocessing(video_path2,"GameOfThroneS05Ep02");
+	preprocessing(video_path1,"GameOfThroneS05Ep01");
+	preprocessing(video_path2,"GameOfThroneS05Ep02");
 	CompareMovieWithMovie(video_path1,"F:\\test.mp4","GameOfThroneS05Ep01");
 
 
