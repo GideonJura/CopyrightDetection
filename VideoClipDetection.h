@@ -26,7 +26,6 @@ using namespace std;
 void descriptor_write(Mat descriptors, string output_file);
 Mat descriptor_read(string input_file);
 
-
 //Preprosessing
 void preprocessing(char* video_path, char* output_folder_name);
 void PersistOnDisk(char* movie_name, string file_name, int downsample_rate);
@@ -41,6 +40,9 @@ int AlignmentFrameWithinMovie(Mat query_mat, char* movie_path, int raw_frame_ind
 //Query - Step 3 Binary Search Border
 int BinarySearchBorderLeft(VideoCapture query_cap, VideoCapture reference_cap,int aligned_query_begin_frame, int total_query_frame, int raw_reference_frame, int downsample_rate, char* movie_folder_name);
 int BinarySearchBorderRight(VideoCapture query_cap, VideoCapture reference_cap,int aligned_query_begin_frame, int total_query_frame, int raw_reference_frame, int downsample_rate, char* movie_folder_name);
+
+//Qeury - Step 4 Quick Validate the Result
+double ValidateTwoMovie(VideoCapture query_cap, VideoCapture reference_cap, int start_query, int start_reference, int blocks,int downsample_rate);
 
 //Show Result Concat two Relevant Movie and BroadCast
 void PlayTwoMovie(VideoCapture query_cap, VideoCapture reference_cap, int start_query, int start_reference, int blocks,int downsample_rate);

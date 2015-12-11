@@ -3,22 +3,19 @@
 #include "VideoClipDetection.h"
 
 //Similar threshold between two different images
-const double SIMILARITY_THRESHOLD = 0.15;
+const double SIMILARITY_THRESHOLD = 0.20;
 
 //Similar threshold between two different images in validating
 const double SIMILARITY_THRESHOLD_VALIDATE = 0.10;
 
 //Validate Threshold to Recognize
-const double VALIDATE_THRESHOLD = 0.5;
+const double VALIDATE_THRESHOLD = 0.50;
 
 //Threshold of matches number between query image and refernece image
 const double MATCHES_DESCRIPTOR_MIN_LIMIT = 20;
 
-//Threshold when we find a very long clip in the query
-const double LONG_MATCHES_IN_QUERY_TERMINATE = 0.95;
-
 //Global Downsample rate 10 = 0.5 second
-const int DOWNSAMPLE_RATE = 10; 
+const int DOWNSAMPLE_RATE = 10; //desperated
 const int DOWNSAMPLE_FRAME_PER_SECOND = 3;
 
 //Interest Point distant threshold Range (0 -100), the smaller the similar
@@ -36,8 +33,8 @@ const int BRIEF_COMPARE_SIZE_X = 320;
 const int BRIEF_COMPARE_SIZE_Y = 240;
 
 //Show Result resizing
-const int SHOWOFF_COMPARE_SIZE_X = 640;
-const int SHOWOFF_COMPARE_SIZE_Y = 360;
+const int SHOWOFF_COMPARE_SIZE_X = 480;
+const int SHOWOFF_COMPARE_SIZE_Y = 270;
 
 //Define Max File Block 
 const int MAX_FILM_LENGTH = 10000;
@@ -71,12 +68,6 @@ Mat descriptor_read(string input_file){
 Rect get_croped_mat(Mat input_mat)
 {
 	Mat gray;
-	Rect ret_rect( 0, 0, 0, 0);
-
-	if(input_mat.cols == 0 || input_mat.rows == 0)
-	{
-		return ret_rect;
-	}
 	cvtColor( input_mat, gray, CV_BGR2GRAY );
 	cv::Scalar avgPixelIntensity = cv::mean( gray );
 	
@@ -89,7 +80,7 @@ Rect get_croped_mat(Mat input_mat)
 	findContours(gray, contours, hierarchy, CV_RETR_EXTERNAL ,CHAIN_APPROX_SIMPLE);
 	int index = 0;
 	int max_num = 0;
-	
+	Rect ret_rect( 0, 0, 0, 0);
 
 	for(int i = 0 ; i < contours.size() ; i++)
 	{
@@ -225,8 +216,6 @@ vector< DMatch > CompareDescriptorWithDiscriptor(Mat query_descriptor, Mat refer
 	}
 	else
 	{
-		DMatch dm(0,0,0);
-		good_matches.push_back(dm);
 		return good_matches ;
 	}
 
@@ -255,7 +244,7 @@ vector< DMatch > CompareDescriptorWithDiscriptor(Mat query_descriptor, Mat refer
 
 //query_img input query image matrix(INPUT)
 //reference_img reference image matrix(INPUT)
-double CompareBrief(Mat query_img, Mat reference_img, bool should_store=false, string file_name = "")
+double CompareBrief(Mat query_img, Mat reference_img)
 {
 	Mat transfered_query_img;
 	if(query_img.cols == 0 || query_img.rows == 0)
@@ -268,8 +257,8 @@ double CompareBrief(Mat query_img, Mat reference_img, bool should_store=false, s
 	}
 
 	//Mat transfered_query_img,query_img,reference_img;
-	resize(query_img,query_img,cvSize(533,800),0,0,INTER_LINEAR);
-	resize(reference_img, reference_img,cvSize(533,800),0,0,INTER_LINEAR);
+	resize(query_img,query_img,cvSize(BRIEF_COMPARE_SIZE_X,BRIEF_COMPARE_SIZE_Y),0,0,INTER_LINEAR);
+	resize(reference_img, reference_img,cvSize(BRIEF_COMPARE_SIZE_X,BRIEF_COMPARE_SIZE_Y),0,0,INTER_LINEAR);
 
 	//TODO I really need Resize? because you have compare the keypoint? Still questioned
 	/*
@@ -296,11 +285,7 @@ double CompareBrief(Mat query_img, Mat reference_img, bool should_store=false, s
 	detector.detect(reference_img, reference_keypoint); 
 	Mat reference_descriptor; 
 	brief.compute(reference_img, reference_keypoint, reference_descriptor); 
-	
-	 Mat img_keypoints_1; Mat img_keypoints_2;
 
-	 drawKeypoints( transfered_query_img, query_keypoint, img_keypoints_1, Scalar::all(-1), DrawMatchesFlags::DEFAULT );
-	 imwrite("Keypoints_1.jpg", img_keypoints_1 );
 
 	BFMatcher matcher(NORM_HAMMING);
 	vector<DMatch> one_match;
@@ -316,32 +301,9 @@ double CompareBrief(Mat query_img, Mat reference_img, bool should_store=false, s
 	//cout<<ret_matches<<" "<<query_descriptor.rows<<" "<<reference_descriptor.rows<<endl;
 	double good_match_proportion = (ret_matches + 0.0) / (reference_descriptor.rows + 1.0);
 	
-	
-	if(should_store)
-	{
-		// -- show , could delete if go to practice	
-		Mat img_matches; 
-		if(query_keypoint.size() == 0 || reference_keypoint.size() == 0)
-		{
-			return good_match_proportion;
-		}
-		drawMatches(query_img, query_keypoint, reference_img , reference_keypoint, good_matches, img_matches); 	
-		char str_i[4];
-		_itoa_s(ret_matches ,str_i,10);
-		putText(img_matches, str_i, cvPoint( 320,20 ),CV_FONT_HERSHEY_COMPLEX,0.7,Scalar(0,255,0));
-		_itoa_s(query_keypoint.size(),str_i,10);
-		putText(img_matches, str_i, cvPoint( 320,40 ),CV_FONT_HERSHEY_COMPLEX,0.7,Scalar(0,255,0));
-		cvWaitKey(50);
-		imwrite(file_name, img_matches);
-	}
-	
-	
 	/*
+	// -- show , could delete if go to practice	
 	Mat img_matches; 
-	if(query_keypoint.size() == 0 || reference_keypoint.size() == 0)
-	{
-		return good_match_proportion;
-	}
 	drawMatches(query_img, query_keypoint, reference_img , reference_keypoint, good_matches, img_matches); 	
 	char str_i[4];
 	_itoa_s(ret_matches ,str_i,10);
@@ -349,14 +311,10 @@ double CompareBrief(Mat query_img, Mat reference_img, bool should_store=false, s
 	_itoa_s(query_keypoint.size(),str_i,10);
 	putText(img_matches, str_i, cvPoint( 320,40 ),CV_FONT_HERSHEY_COMPLEX,0.7,Scalar(0,255,0));
 	cvWaitKey(50);
-	imshow("Alignment", img_matches);
+	imshow("Result", img_matches);
 	*/
+
 	return good_match_proportion;
-
-}
-
-void draw()
-{
 
 }
 
@@ -437,10 +395,12 @@ void PersistOnDisk(VideoCapture capture, string file_name, int downsample_rate)
 	printf( "%f seconds\n", duration ); 
 }
 
-vector<KeyPoint> get_key_point(string file_name)
+vector<KeyPoint> get_key_point(string file_name, int cur_index)
 {
-	vector<KeyPoint> mykpts2;	
-	string absolute_keypoint_file_name = file_name;
+	vector<KeyPoint> mykpts2;
+	stringstream ss;
+	ss<<cur_index;	
+	string absolute_keypoint_file_name = "F://" + file_name + "//" + ss.str() + "_KeyPoint";
 	FileStorage fs2(absolute_keypoint_file_name, FileStorage::READ);
 	FileNode kptFileNode = fs2["keypoint"];
 	read( kptFileNode, mykpts2 );
@@ -464,87 +424,41 @@ int CompareMatWithHistory(Mat query_frame, string file_name, int start_frame, in
 	BriefDescriptorExtractor brief; 
     Mat query_descriptor; 
     brief.compute(query_frame, query_keypoint, query_descriptor);
-
-	//xxxxxxyyy xxx-> Frame Index yyy->matches because yyy<500
-	vector<long> result_vec;
-	
+	Mat reference_descriptor;
 	int best_matched_img = 0;
 	int max_match_number = 0;
 
-	int total_block = (end_frame - start_frame) / downsample_rate ;
-
-	Mat* reference_descriptor = new Mat[total_block];
-	string *absolute_file_name  = new string[total_block];
-	string *absolute_keypoint_file_name = new string[total_block]; 
-	int* cur_index = new int[total_block];
-	int* similar_size = new int[total_block];
-	stringstream* ss = new stringstream[total_block];
-
-	//BottleNeck Part, Use Multi-Core OpenMP
-	//Multi-Core Apporoach
-
-	#pragma omp parallel for 
-	for(int n_count = 0 ; n_count < total_block ; n_count ++)
+	//#pragma omp parallel for 
+	for(int cur_index = start_frame ; cur_index <= end_frame; cur_index += downsample_rate)
 	{
-		cur_index[n_count] = start_frame + downsample_rate* n_count;
+		stringstream ss;
+		ss<<cur_index;	
+		string absolute_file_name = "F://" + file_name + "//" + ss.str();
+		string absolute_keypoint_file_name = "F://" + file_name + "//" + ss.str() + "_KeyPoint";
 
-		ss[n_count]<<cur_index[n_count];
+		vector<KeyPoint> reference_keypoint;
+		reference_keypoint = get_key_point(file_name, cur_index);
+	
+		vector<KeyPoint> query_keypoint; 
+		OrbFeatureDetector detector;
+		detector.detect(query_frame, query_keypoint);
 
-		absolute_file_name[n_count] = "F://" + file_name + "//" + ss[n_count].str();
-		absolute_keypoint_file_name[n_count] = "F://" + file_name + "//" + ss[n_count].str() + "_KeyPoint";
-
-		reference_descriptor[n_count] = descriptor_read(absolute_file_name[n_count]);
-		similar_size[n_count] = CompareDescriptorWithDiscriptor(query_descriptor,reference_descriptor[n_count],query_keypoint,get_key_point(absolute_keypoint_file_name[n_count])).size();
+		reference_descriptor = descriptor_read(absolute_file_name);
+		int similar_size = CompareDescriptorWithDiscriptor(query_descriptor,reference_descriptor,query_keypoint,reference_keypoint).size();
 		//DEBUG PRINT
-		/*
-		int cur_size = similar_size[n_count];
-		#pragma omp critical 
+		cout<<cur_index<<" "<<similar_size<<endl;
+		if(similar_size > max_match_number)
 		{
-			if(cur_size > max_match_number)
-			{
-				cout<<similar_size[n_count]<<" "<<max_match_number<<endl;
-				max_match_number =  cur_size;
-				best_matched_img = cur_index[n_count];
-				//cout<<max_match_number<<" "<<best_matched_img<<endl;
-			}
-		}
-		*/
-		//#pragma omp atomic
-		#pragma omp critical 
-		{
-			result_vec.push_back(cur_index[n_count] * 1000 + similar_size[n_count]);
-		}
-	}
-
-	if(result_vec.size() == 0)
-	{
-		return 0;
-	}
-
-	for(int i = 0 ; i < result_vec.size() ; i++ )
-	{
-		if( result_vec[i] % 1000 > max_match_number)
-		{
-			max_match_number = result_vec[i] % 1000;
-			best_matched_img  = result_vec[i] / 1000;
+			max_match_number =  similar_size;
+			best_matched_img = cur_index;
 		}
 	}
 
 	max_similar_rate = max_match_number;
-	cout<<"Best Match Number: " << max_match_number<<endl;
-	cout<<"Best Match Index : " << best_matched_img<<endl;
- 
+
 	finish = clock(); 
 	duration = (double)(finish - start) / CLOCKS_PER_SEC;  
 	printf( "CompareMatWithHistory : %f seconds\n", duration ); 
-
-	delete[] reference_descriptor;
-	delete[] absolute_file_name;
-	delete[] absolute_keypoint_file_name;
-	delete[] cur_index;
-	delete[] similar_size;
-	delete[] ss;
-	
 
 	return best_matched_img;
 }
@@ -672,9 +586,6 @@ int CompareMovieWithMovie(char* reference_movie, char* query_movie, char* movie_
 	//const int head_tail_frame_count = query_total_frame /  DOWNSAMPLE_RATE ;
 	for(int i = 0 ; i < DOWNSAMPLE_RATE ; i++)
 	{		
-		stringstream ss;
-		ss<<i<<".jpg";
-
 		cout<<"GO TO NUM: "<<i<<" Query Frames(0 - 9)"<<endl;
 		//choose the middle frame for example add DOWNSAMLE_RATE SO Alignment could not exceed the border
 		long query_begin_frame = query_total_frame / DOWNSAMPLE_RATE * i  + i + DOWNSAMPLE_RATE;
@@ -690,8 +601,7 @@ int CompareMovieWithMovie(char* reference_movie, char* query_movie, char* movie_
 		}
 
 		resize(croped_frame,croped_frame,cvSize(BRIEF_COMPARE_SIZE_X,BRIEF_COMPARE_SIZE_Y), 0, 0,INTER_LINEAR);
-		//imwrite(ss.str(),croped_frame);	
-
+		imwrite("test_croped.jpg",croped_frame);	
 		raw_frame_index = CompareMatWithHistory(croped_frame, movie_folder_name, 0 , reference_total_frame, DOWNSAMPLE_RATE,good_match_number);
 
 		if(good_match_number < MATCHES_DESCRIPTOR_MIN_LIMIT)
@@ -704,7 +614,6 @@ int CompareMovieWithMovie(char* reference_movie, char* query_movie, char* movie_
 		is_frame_in_this_clip[i] = true;
 
 		int off_size = AlignmentFrameWithinMovie(query_frame, reference_movie, raw_frame_index, DOWNSAMPLE_RATE);
-		//int off_size = 0;
 		cout<<"Alignment_Off_Size: "<<off_size<<endl;
 
 		//query_begin_frame 1464 total frame 2928 raw_frame 3940 off_size 1 block 20
@@ -725,23 +634,12 @@ int CompareMovieWithMovie(char* reference_movie, char* query_movie, char* movie_
 			longest_block_length = query_clip_end_block - query_clip_begin_block;
 			longest_block_index = i;
 		}
-
-		
-		//TODO should concat the left/right here
-		if( (query_clip_end_block - query_clip_begin_block + 1)  / (query_total_frame / DOWNSAMPLE_RATE + 0.01) >  LONG_MATCHES_IN_QUERY_TERMINATE)
-		{
-			break;
-		}
-		
 	}
 
 	for(int j = 0 ; j < DOWNSAMPLE_RATE ; j++)
 	{
-		if(is_frame_in_this_clip[j])
-		{
-			cout<<j<<" "<<query_block_left_border[j]<<" "<<query_block_right_border[j]<<" GAP:"<<query_block_right_border[j] - query_block_left_border[j]<<endl;
-			cout<<"Reference Start"<<reference_start_index[j]<<" Query Start "<< query_start_index[j]<<endl;
-		}
+		cout<<j<<" "<<query_block_left_border[j]<<" "<<query_block_right_border[j]<<" GAP:"<<query_block_right_border[j] - query_block_left_border[j]<<endl;
+		cout<<"Reference Start"<<reference_start_index[j]<<" Query Start "<< query_start_index[j]<<endl;
 	}
 
 	//Find a block that conatins reference movie
@@ -795,7 +693,7 @@ int CompareMovieWithMovie(char* reference_movie, char* query_movie, char* movie_
 		}
 
 		int max_block_extended = query_end_max_block -	query_begin_max_block;
-		const int frame_per_second = 25;
+		const int frame_per_second = 30;
 
 		double validate_result = ValidateTwoMovie(query_cap,reference_cap,query_start_max_frame,reference_start_max_frame,max_block_extended,DOWNSAMPLE_RATE);
 		
@@ -803,8 +701,8 @@ int CompareMovieWithMovie(char* reference_movie, char* query_movie, char* movie_
 		duration = (double)(finish - start) / CLOCKS_PER_SEC;  
 		printf( "CompareMovieWithMovie : %f seconds\n", duration ); 
 
-		
-		if(validate_result > VALIDATE_THRESHOLD)
+		if(validate_result > 0)
+		//if(validate_result > VALIDATE_THRESHOLD)
 		{
 			cout<<"#######################################"<<endl;
 			cout<<"#FINAL RESULT"<<"Query Frame Come From:"<<query_start_max_frame<<endl;
@@ -812,9 +710,7 @@ int CompareMovieWithMovie(char* reference_movie, char* query_movie, char* movie_
 			cout<<"#FINAL RESULT"<<":Query_Block_End:"<<query_end_max_block<<endl;
 			cout<<"#FINAL RESULT"<<":Total Time:"<<(query_end_max_block - query_begin_max_block) * DOWNSAMPLE_RATE  / frame_per_second<<"SECOND"<<endl;
 			cout<<"#######################################"<<endl;
-
 			PlayTwoMovie(query_cap,reference_cap,query_start_max_frame,reference_start_max_frame,max_block_extended,DOWNSAMPLE_RATE);
-			
 		}
 		else
 		{
@@ -833,18 +729,15 @@ int CompareMovieWithMovie(char* reference_movie, char* query_movie, char* movie_
 		
 	}
 
+
+	cin.get();
+
 	return 0;
 }
 
 double ValidateTwoMovie(VideoCapture query_cap, VideoCapture reference_cap, int start_query, int start_reference, int blocks,int downsample_rate)
 {
 	Mat query_mat, reference_mat, concat_mat;
-
-	if(blocks < 10)
-	{
-		cout<<"Validate Result: So less Blocks"<<endl;
-		return 1;
-	}
 	
 	int jump_block = blocks  / 10;
 	int test_cases = 0;
@@ -890,11 +783,18 @@ void PlayTwoMovie(VideoCapture query_cap, VideoCapture reference_cap, int start_
 	Mat query_mat, reference_mat, concat_mat;
 	for(int i = 0 ; i < blocks ; i++)
 	{
-		//down_sample
-		if(blocks >= 100 && i % 20 != 1)
+		if (i == 0)
 		{
-			continue;
+			imwrite("query_start.jpg",query_mat);
+			imwrite("reference_start.jpg",reference_mat);
 		}
+
+		if (i == blocks - 1)
+		{
+			imwrite("query_end.jpg",query_mat);
+			imwrite("reference_end.jpg",reference_mat);
+		}
+
 		int frame_in_the_reference = start_reference + i * downsample_rate;
 		int frame_in_the_query = start_query + i * downsample_rate;
 		query_cap.set( CV_CAP_PROP_POS_FRAMES,frame_in_the_query);
@@ -913,13 +813,10 @@ void PlayTwoMovie(VideoCapture query_cap, VideoCapture reference_cap, int start_
 		//Go to 16:9
 		resize(query_mat,query_mat,Size(SHOWOFF_COMPARE_SIZE_X,SHOWOFF_COMPARE_SIZE_Y),0,0,1);
 		resize(reference_mat,reference_mat,Size(SHOWOFF_COMPARE_SIZE_X,SHOWOFF_COMPARE_SIZE_Y),0,0,1);
-		
-		
 		//Vertically Concat two Mat
 		hconcat(query_mat,reference_mat,concat_mat);
 		imshow("Compare",concat_mat);
-		cvWaitKey(2);
-		
+		cvWaitKey(50);
 	}
 }
 
@@ -978,9 +875,14 @@ int BinarySearchBorderLeft(VideoCapture query_cap, VideoCapture reference_cap,in
 		//Go to 16:9
 		resize(query_mat,query_mat,Size(SHOWOFF_COMPARE_SIZE_X,SHOWOFF_COMPARE_SIZE_Y),0,0,1);
 		resize(reference_mat,reference_mat,Size(SHOWOFF_COMPARE_SIZE_X,SHOWOFF_COMPARE_SIZE_Y),0,0,1);
-		
-		
-				double similar_result = CompareBrief(query_mat,reference_mat);
+		/*
+		//Vertically Concat two Mat
+		hconcat(query_mat,reference_mat,concat_mat);
+		imshow("Left Border Search",concat_mat);
+		cvWaitKey(50);
+		*/
+
+		double similar_result = CompareBrief(query_mat,reference_mat);
 		if(similar_result > SIMILARITY_THRESHOLD)
 		{
 			if(end_block - start_block == 1)
@@ -1003,13 +905,6 @@ int BinarySearchBorderLeft(VideoCapture query_cap, VideoCapture reference_cap,in
 				start_block = cur_block;
 			}
 		}
-		/*
-		//Vertically Concat two Mat
-		hconcat(query_mat,reference_mat,concat_mat);
-		imshow("Left Border Search",concat_mat);
-		cvWaitKey(50);
-		imwrite("Left.jpg",concat_mat);
-		*/
 	}
 
 	return end_block;
@@ -1089,6 +984,12 @@ int BinarySearchBorderRight(VideoCapture query_cap, VideoCapture reference_cap,i
 		resize(query_mat,query_mat,Size(SHOWOFF_COMPARE_SIZE_X,SHOWOFF_COMPARE_SIZE_Y), 0, 0, 1);
 		resize(reference_mat,reference_mat,Size(SHOWOFF_COMPARE_SIZE_X,SHOWOFF_COMPARE_SIZE_Y), 0, 0, 1);
 		
+		/*
+		//Vertically Concat two Mat
+		hconcat(query_mat,reference_mat,concat_mat);
+		imshow("Right Border Search",concat_mat);
+		cvWaitKey(50);
+		*/
 
 		double similar_result = CompareBrief(query_mat,reference_mat);
 		if(similar_result > SIMILARITY_THRESHOLD)
@@ -1113,14 +1014,6 @@ int BinarySearchBorderRight(VideoCapture query_cap, VideoCapture reference_cap,i
 				end_block = cur_block;
 			}
 		}
-			
-		/*
-		//Vertically Concat two Mat
-		hconcat(query_mat,reference_mat,concat_mat);
-		imshow("Right Border Search",concat_mat);
-		cvWaitKey(50);
-		imwrite("Right.jpg",concat_mat);
-		*/
 	}
 
 	return start_block;
@@ -1228,8 +1121,6 @@ int AlignmentFrameWithinMovie(Mat query_mat, char* movie_path, int raw_frame_ind
 	
 	int offsize = 0;
 	double best_match_proprotion = 0;
-	Mat best_reference_mat;
-
 	for(long curFrame = start_frame + 1; curFrame< end_frame; curFrame ++)
 	{
 		Mat reference_mat;
@@ -1241,82 +1132,99 @@ int AlignmentFrameWithinMovie(Mat query_mat, char* movie_path, int raw_frame_ind
 		{
 			best_match_proprotion = good_match_proportion;
 			offsize = curFrame - raw_frame_index;
-			best_reference_mat = reference_mat;
 		}
-		//cout<<curFrame<<" "<<good_match_proportion<<endl;
+		cout<<curFrame<<" "<<good_match_proportion<<endl;
 	}
-
-	stringstream ss;
-	ss<<start_frame+offsize;
-
-	string file_name = "D:\\Result\\best_match_" + ss.str() + ".jpg";
-	CompareBrief(query_mat,best_reference_mat,true,file_name);
 
 	return offsize;
 }
 
 void test()
 {
-	//Jitter
-	
-	char* ref_test[8] = {"F:\\1.ts","F:\\2.ts","F:\\3.ts","F:\\4.ts","F:\\5.ts","F:\\6.ts","F:\\7.ts","F:\\8.ts"};
-	char* fol_test[8] = {"R1","R2","R3","R4","R5","R6","R7","R8"};
+	//char* strLeft = "F:\\test_1.jpg";
+	//char* strRight = "F:\\test_2.jpg";
 
-	for(int i = 0 ; i < 8 ; i++)
-	{
-		preprocessing(ref_test[i],fol_test[i]);
-		for(int j = 0 ; j < 5 ; j ++)
-		{
-			stringstream ss;
-			ss<<"F:\\Compression\\";
-			ss<<"Jitter";
-			ss<<"\\";
-			ss<<i + 1;
-			ss<<".j.";
-			ss<<j + 1;
-			ss<<".ts";
-			string query_movie = ss.str();
-			char a[100] = "";
-			query_movie.copy(a,90,0);
-			cout<<ref_test[i]<<" "<<a<<endl;
-			CompareMovieWithMovie(ref_test[i], a,fol_test[i]);
-			}
-	}
-	
-	/*
-	//Delay
-	char* ref_test[8] = {"F:\\1.ts","F:\\2.ts","F:\\3.ts","F:\\4.ts","F:\\5.ts","F:\\6.ts","F:\\7.ts","F:\\8.ts"};
-	char* fol_test[8] = {"R1","R2","R3","R4","R5","R6","R7","R8"};
-	char* delay_time[7] = {"0.1", "0.4", "1","3","5","8","10"};
-	for(int i = 0 ; i < 8 ; i++)
-	{
-		//preprocessing(ref_test[i],fol_test[i]);
-		for(int j = 0 ; j < 7 ; j ++)
-		{
-			stringstream ss;
-			ss<<"F:\\Compression\\";
-			ss<<"PLR";
-			ss<<"\\";
-			ss<<i + 1;
-			ss<<".plr.";
-			ss<<delay_time[j];
-			ss<<".ts";
-			string query_movie = ss.str();
-			char a[100] = "";
-			query_movie.copy(a,90,0);
-			cout<<ref_test[i]<<" "<<a<<endl;
-			CompareMovieWithMovie(ref_test[i], a,fol_test[i]);
-			}
-	}
-	
+	//char* strLeft = "left.jpg";
+	//char* strRight = "right.jpg";
+
+	char* strLeft = "compress50.jpg";
+	char* strRight = "original1.jpg";
+
+	//char* strLeft = "test-cici1.png";
+	//char* strRight = "test-cici2.png";
+
+	Mat img1 = imread(strLeft);
+	Mat img2 = imread(strRight);
+
+	//CompareSIFT(img1, img2);
+	//CompareBrief(img1, img2,0,"Briegf");
+
+	char* video_path = "F:\GOT02.mp4";
+	char* bmp_path = "GOT02[00_02_38][20151104-125336-1].BMP";
+	//CompareMatWithMovie(video_path, bmp_path,video_path);
+
+	//Test Hisogram
+	//double result = HistogramCompare(strLeft,strRight);
+	//cout<<result<<endl;
+
+	char* video_path1 = "F:\GOT01.mp4";
+	char* video_path2 = "F:\GOT02.mp4";
+
+	//char* video_path1 = "F:\referenceMKV.mp4";
+	//char* video_path2 = "F:\clip1.mp4";
+
+	//CompareMovieWithMovie(video_path1,video_path2);
+
+	Mat x = imread(bmp_path);
 
 	/*
-	char* video_path_1 = "F:\\reference_data\\a.mp4";
-	char* video_path_2 = "F:\\reference_data\\b.mp4";
-	char* video_path_3 = "F:\\reference_data\\c.mp4";
-	//preprocessing(video_path_1,"Reference1");
-	//preprocessing(video_path_2,"Reference2");
-	//preprocessing(video_path_3,"Reference3");
+	#pragma omp parallel sections
+	{
+		#pragma omp section
+		{
+			cout<<CompareMatWithHistory(x,"ThroneOfPower01");
+		}
+		#pragma omp section
+		{
+			cout<<CompareMatWithHistory(x,"ThroneOfPower02");
+		}
+		#pragma omp section
+		{
+			cout<<CompareMatWithHistory(x,"ThroneOfPower03");
+		}
+		#pragma omp section
+		{
+			cout<<CompareMatWithHistory(x,"Unicorn01");
+		}
+	}
+	*/
+	//cout<<CompareMatWithHistory(x,"ThroneOfPower01")<<endl;
+	//cout<<CompareMatWithHistory(x,"ThroneOfPower03")<<endl;
+	//cout<<CompareMatWithHistory(x,"Unicorn01")<<endl;
+	/*
+	int raw_frame = CompareMatWithHistory(x,"ThroneOfPower02", 3000 , 6000 , 20);
+	cout<<"Raw_Frame: "<<raw_frame<<endl;
+	int off_size = AlignmentFrameWithinMovie(x, video_path2, raw_frame, 20);
+	cout<<"Alignment_Off_Size: "<<off_size<<endl;
+	*/
+	/*
+	char* reference_clip = "F:\\referenceMKV.mp4";
+	char* query_clip = "F:\\clip1.mp4";
+	char* query_clip1 = "F:\\clip1_320240.mp4";
+	char* query_clip2 = "F:\\clip2_320240.mp4";
+	char* query_clip3 = "F:\\clip3_320240.mp4";
+	CompareMovieWithMovie(reference_clip, query_clip);
+	*/
+}
+
+
+int _tmain(int argc, _TCHAR* argv[])
+{
+
+
+	//test();
+	/*
+	char* reference_clip = "F:\\Reference2.mp4";
 	char* query_clip1 = "F:\\A+B+C\\1280720\\A+B+C.mp4";
 	char* query_clip2 = "F:\\A+B+C\\720576\\A+B+C_720576.mp4";
 	char* query_clip3 = "F:\\A+B+C\\320240\\A+B+C_320240.mp4";
@@ -1326,21 +1234,15 @@ void test()
 	char* query_clip7 = "F:\\A+B+C\\43\\A+B+C_43.mp4";
 	char* query_clip8 = "F:\\A+B+C\\54\\A+B+C_54.mp4";
 
-	char* reference_folder_name_1 = "Reference1";
-	char* reference_folder_name_2 = "Reference2";
-	char* reference_folder_name_3 = "Reference3";
-
-	CompareMovieWithMovie(video_path_1, query_clip3,reference_folder_name_1);
-	CompareMovieWithMovie(video_path_2, query_clip3,reference_folder_name_2);
-	CompareMovieWithMovie(video_path_3, query_clip3,reference_folder_name_3);
+	char* reference_folder_name = "Reference2";
+	*/
 	
 	char* reference_folder_name = "Bill";
 	char* reference_clip_test = "F:\\core_dataset_30FPS\\core_dataset_FPS30\\bill_clinton_apology_speech\\Clip1_bill.mp4";
 	char* query_clip_now_ok = "F:\\core_dataset_30FPS\\core_dataset_FPS30\\bill_clinton_apology_speech\\Clip3_bill.mp4";
 	//preprocessing(reference_clip_test,reference_folder_name);
 	CompareMovieWithMovie(reference_clip_test, query_clip_now_ok,reference_folder_name);
-	*/
-
+	
 
 	/*
 	char* reference_folder_name = "BeatifulMind";
@@ -1357,148 +1259,20 @@ void test()
 	//preprocessing(reference_clip_test,reference_folder_name);
 	//CompareMovieWithMovie(reference_clip_test, query_clip_test_1,reference_folder_name);
 
+	//Test
+	//char* bmp_path = 
+	//Mat x = imread(bmp_path);
+
+
 
 	/*
-	//Test
-	string video_path_inida = "F:\\reference_3min\\DTNRD.mp4";
-	string video_path_007 = "F:\\reference_3min\\Spy(2015).mp4";
-	string video_path_dead = "F:\\reference_3min\\TMJ.mp4";
-	//preprocessing(video_path_inida,"Reference1");
-	//preprocessing(video_path_007,"Reference2");
-	//preprocessing(video_path_dead,"Reference3");
+	char* video_path1 = "F:\GOT01.mp4";
+	char* video_path2 = "F:\GOT02.mp4";
+	//preprocessing(video_path1,"GameOfThroneS05Ep01");
+	//preprocessing(video_path2,"GameOfThroneS05Ep02");
+	CompareMovieWithMovie(video_path1,"F:\\test.mp4","GameOfThroneS05Ep01");
+	*/
 
-
-	
-	string begin = "F:\\Enhancement\\Luminance\\";
-	string q1 = "DTNRD_";
-	string q2 = "Spy(2015)_";
-	string q3 = "TMJ_";
-	string method1 = "40";
-	string end = ".mp4";
-
-	string q[3]  = {q1,q2,q3};	
-	string reference[3] = {"Reference1", "Reference2", "Reference3"};
-	string ref_movie[3] = {video_path_inida, video_path_007, video_path_dead};
-	for(int i = 0 ; i < 3 ; i++)
-	{
-		string query_movie = begin + method1 + "\\"+ q[i] + "Luminance" + method1 + end;
-		char a[100] = "";
-		char b[100] = "";
-		char c[100] = "";
-		query_movie.copy(a,90,0);
-		ref_movie[i].copy(b,90,0);
-		reference[i].copy(c,90,0);
-		CompareMovieWithMovie(b,a,c);
-	}
-	*/ 
-		
-}
-
-void show()
-{
-	char *p0 = "0.jpg";
-	char *p1 = "1.jpg";
-	char *p2 = "2.jpg";
-	char *p3 = "3.jpg";
-	char *p4 = "4.jpg";
-	char *p5 = "5.jpg";
-	char *p6 = "6.jpg";
-	char *p7 = "7.jpg";
-	char *p8 = "8.jpg";
-	char *p9 = "9.jpg";
-	Mat ma = imread(p0);
-	imshow(p0,ma);
-	ma = imread(p1);
-	imshow(p1,ma);
-	ma = imread(p2);
-	imshow(p2,ma);
-	ma = imread(p3);
-	imshow(p3,ma);
-	ma = imread(p4);
-	imshow(p4,ma);
-	ma = imread(p5);
-	imshow(p5,ma);
-	ma = imread(p6);
-	imshow(p6,ma);
-	ma = imread(p7);
-	imshow(p7,ma);
-	ma = imread(p8);
-	imshow(p8,ma);
-	ma = imread(p9);
-	imshow(p9,ma);
-
-	cvWaitKey();
-}
-
-
-void do_demo()
-{
-	//1 DTNRD 2 SPY 3 TMJ
-	char* r[3] = {"Reference1", "Reference2", "Reference3"};
-	char* reference; 
-	char* query;
-	
-	//BW
-	reference = "F:\\reference_3min\\TMJ.mp4";
-	query = "F:\\DataSet_updated\\BW\\TMJ_BW.mp4";
-	CompareMovieWithMovie(reference,query,r[2]);
-	//Blur1
-	query = "F:\\DataSet_updated\\blur1\\TMJ_blur1.mp4";
-	CompareMovieWithMovie(reference,query,r[2]);
-	//Blur2
-	query = "F:\\DataSet_updated\\blur2\\TMJ_blur2.mp4";
-	CompareMovieWithMovie(reference,query,r[2]);
-	//Crop 35%
-	reference = "F:\\reference_3min\\Spy(2015).mp4";
-	query = "F:\\DataSet_updated\\Cropped\\35%\\Spy(2015)_Cropped35%.mp4";
-	CompareMovieWithMovie(reference,query,r[1]);
-	//Mirror
-	query = "F:\\DataSet_updated\\Mirror\\Spy(2015)_Mirror.mp4";
-	CompareMovieWithMovie(reference,query,r[1]);
-	//Camera
-	reference = "F:\\DataSet_updated\\Cam_record\\VideoRecaptured\\Original\\waterfall_original.avi";
-	query = "F:\\DataSet_updated\\Cam_record\\VideoRecaptured\\Recaptured\\waterfall_recaptured.avi";
-	CompareMovieWithMovie(reference,query,"Camera");
-	
-	//Jitter
-	reference = "F:\\Compression\\Reference\\4.ts";
-	query = "F:\\Compression\\Jitter\\4.j.3.ts";
-	CompareMovieWithMovie(reference,query,"R4");
-	//Delay
-	reference = "F:\\Compression\\Reference\\7.ts";
-	query = "F:\\Compression\\Delay\\7.500ms.ts";
-	CompareMovieWithMovie(reference,query,"R7");
-	//PLR
-	reference = "F:\\Compression\\Reference\\3.ts";
-	query = "F:\\Compression\\PLR\\3.plr.8.ts";
-	CompareMovieWithMovie(reference,query,"R3");
-	//Luminous
-	reference = "F:\\reference_3min\\DTNRD.mp4";
-	query = "F:\\Enhancement\\Luminance\\40\\DTNRD_Luminance40.mp4";
-	CompareMovieWithMovie(reference,query,r[0]);
-	//Contrast
-	query = "F:\\Enhancement\\Contrast\\-20\\DTNRD_Contrast-20.mp4";
-	CompareMovieWithMovie(reference,query,r[0]);
-	//Real-Senaries
-	reference = "F:\\GOT01.mp4";
-	query = "F:\\test.mp4";
-	CompareMovieWithMovie(reference ,query,"GameOfThroneS05Ep01");
-}
-
-void do_paper()
-{
-	Mat x1;
-	Mat x2;
-	x1 = imread("test2.jpg");
-	x2 =imread("test2.png");
-	CompareBrief(x1,x2,true,"paper.jpg");
-}
-
-int _tmain(int argc, _TCHAR* argv[])
-{
-	//test();
-	//do_demo();
-	do_paper();
 	cin.get();
 
 	return EXIT_SUCCESS;
