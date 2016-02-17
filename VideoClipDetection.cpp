@@ -6,10 +6,10 @@
 const double SIMILARITY_THRESHOLD = 0.15;
 
 //Similar threshold between two different images in validating
-const double SIMILARITY_THRESHOLD_VALIDATE = 0.10;
+const double SIMILARITY_THRESHOLD_VALIDATE = SIMILARITY_THRESHOLD * 0.67;
 
 //Validate Threshold to Recognize
-const double VALIDATE_THRESHOLD = 0.5;
+const double VALIDATE_THRESHOLD = 0.4;
 
 //Threshold of matches number between query image and refernece image
 const double MATCHES_DESCRIPTOR_MIN_LIMIT = 20;
@@ -18,13 +18,13 @@ const double MATCHES_DESCRIPTOR_MIN_LIMIT = 20;
 const double LONG_MATCHES_IN_QUERY_TERMINATE = 0.95;
 
 //Global Downsample rate 10 = 0.5 second
-const int DOWNSAMPLE_RATE = 10; 
-const int DOWNSAMPLE_FRAME_PER_SECOND = 3;
+const int DOWNSAMPLE_RATE = 15; 
 
 //Interest Point distant threshold Range (0 -100), the smaller the similar
 const int HAMMING_DISTANCE_THRESHOLD = 35; 
 
 //Displacement Proportion between query and reference (x-axis 20%, y-axis 20%)
+//Not Used In This Version
 const double DISTANCE_OF_DISPLACEMENT_THRESHOLD = 0.20;
 
 //Descriptor size in the Database
@@ -39,9 +39,13 @@ const int BRIEF_COMPARE_SIZE_Y = 240;
 const int SHOWOFF_COMPARE_SIZE_X = 640;
 const int SHOWOFF_COMPARE_SIZE_Y = 360;
 
-//Define Max File Block 
-const int MAX_FILM_LENGTH = 10000;
+//Define Default FPS
+const int FRAME_PER_SECOND = 30;
 
+//Global Experiemnt Output Path
+string annotation_input_file_name =  "";
+string annotation_output_file_name = "";
+ofstream fout("F:\\ExpResult\\Result.txt");
 
 //Persist descriptors to disk
 //Input Mat descriptors : (input) decriptor
@@ -360,7 +364,7 @@ void draw()
 
 }
 
-void PersistOnDisk(char* movie_name, string file_name, int downsample_rate)
+void PersistOnDisk(char* movie_name, string file_name)
 {
 	cv::VideoCapture capture(movie_name);  
 
@@ -368,10 +372,10 @@ void PersistOnDisk(char* movie_name, string file_name, int downsample_rate)
         cout<<"ERROR"<<endl; 
     }  
 
-	PersistOnDisk(capture, file_name, downsample_rate);
+	PersistOnDisk(capture, file_name);
 }
 
-void PersistOnDisk(VideoCapture capture, string file_name, int downsample_rate)
+void PersistOnDisk(VideoCapture capture, string file_name)
 {
 	clock_t start, finish;  
 	double duration;  
@@ -394,7 +398,7 @@ void PersistOnDisk(VideoCapture capture, string file_name, int downsample_rate)
 			return;
 		}
 
-		if(cur_index % downsample_rate != 0)
+		if(cur_index % DOWNSAMPLE_RATE != 0)
 		{
 			cur_index ++;
 			continue;
@@ -422,8 +426,8 @@ void PersistOnDisk(VideoCapture capture, string file_name, int downsample_rate)
 
 		stringstream ss;
 		ss<<cur_index;	
-		string absolute_file_name = "F://" + file_name + "//" + ss.str();
-		string absolute_keypoint_file_name = "F://" + file_name + "//" + ss.str() + "_KeyPoint";
+		string absolute_file_name = "F://KEYPOINTS//" + file_name + "//" + ss.str();
+		string absolute_keypoint_file_name = "F://KEYPOINTS//" + file_name + "//" + ss.str() + "_KeyPoint";
 		descriptor_write(store_descriptor,absolute_file_name);	
 		FileStorage fs(absolute_keypoint_file_name,FileStorage::WRITE);
 		write(fs, "keypoint", store_keypoint);
@@ -450,7 +454,7 @@ vector<KeyPoint> get_key_point(string file_name)
 }
 
 //Most Time-Consuming-Part
-int CompareMatWithHistory(Mat query_frame, string file_name, int start_frame, int end_frame, int downsample_rate, int& max_similar_rate)
+int CompareMatWithHistory(Mat query_frame, string file_name, int start_frame, int end_frame, int& max_similar_rate)
 {
 	clock_t start, finish;  
 	double duration;  
@@ -471,7 +475,7 @@ int CompareMatWithHistory(Mat query_frame, string file_name, int start_frame, in
 	int best_matched_img = 0;
 	int max_match_number = 0;
 
-	int total_block = (end_frame - start_frame) / downsample_rate ;
+	int total_block = (end_frame - start_frame) / DOWNSAMPLE_RATE ;
 
 	Mat* reference_descriptor = new Mat[total_block];
 	string *absolute_file_name  = new string[total_block];
@@ -486,12 +490,12 @@ int CompareMatWithHistory(Mat query_frame, string file_name, int start_frame, in
 	#pragma omp parallel for 
 	for(int n_count = 0 ; n_count < total_block ; n_count ++)
 	{
-		cur_index[n_count] = start_frame + downsample_rate* n_count;
+		cur_index[n_count] = start_frame + DOWNSAMPLE_RATE* n_count;
 
 		ss[n_count]<<cur_index[n_count];
 
-		absolute_file_name[n_count] = "F://" + file_name + "//" + ss[n_count].str();
-		absolute_keypoint_file_name[n_count] = "F://" + file_name + "//" + ss[n_count].str() + "_KeyPoint";
+		absolute_file_name[n_count] = "F://KEYPOINTS//" + file_name + "//" + ss[n_count].str();
+		absolute_keypoint_file_name[n_count] = "F://KEYPOINTS//" + file_name + "//" + ss[n_count].str() + "_KeyPoint";
 
 		reference_descriptor[n_count] = descriptor_read(absolute_file_name[n_count]);
 		similar_size[n_count] = CompareDescriptorWithDiscriptor(query_descriptor,reference_descriptor[n_count],query_keypoint,get_key_point(absolute_keypoint_file_name[n_count])).size();
@@ -639,6 +643,7 @@ int CompareMovieWithMovie(char* reference_movie, char* query_movie, char* movie_
 	cv::VideoCapture query_cap(query_movie);  
 	cv::VideoCapture reference_cap(reference_movie);
 
+
     if (!query_cap.isOpened()) {  
         cout<<"ERROR"<<endl;
 		return -100;
@@ -654,6 +659,14 @@ int CompareMovieWithMovie(char* reference_movie, char* query_movie, char* movie_
 
 	long query_total_frame=static_cast<long>(query_cap.get(CV_CAP_PROP_FRAME_COUNT));
 	long reference_total_frame = static_cast<long>(reference_cap.get(CV_CAP_PROP_FRAME_COUNT));
+
+	int query_fps = query_cap.get(CV_CAP_PROP_FPS);
+	int reference_fps = reference_cap.get(CV_CAP_PROP_FPS);
+
+	cout<<"DEBUG_1 "<<query_total_frame<<" "<<reference_total_frame<<endl;
+	cout<<"DEBUG_2 "<<query_fps<<" "<<reference_fps<<endl;
+
+
 	Mat query_frame;
 	
 	long query_block_left_border[DOWNSAMPLE_RATE];
@@ -690,9 +703,9 @@ int CompareMovieWithMovie(char* reference_movie, char* query_movie, char* movie_
 		}
 
 		resize(croped_frame,croped_frame,cvSize(BRIEF_COMPARE_SIZE_X,BRIEF_COMPARE_SIZE_Y), 0, 0,INTER_LINEAR);
-		//imwrite(ss.str(),croped_frame);	
+		imwrite(ss.str(),croped_frame);	
 
-		raw_frame_index = CompareMatWithHistory(croped_frame, movie_folder_name, 0 , reference_total_frame, DOWNSAMPLE_RATE,good_match_number);
+		raw_frame_index = CompareMatWithHistory(croped_frame, movie_folder_name, 0 , reference_total_frame,good_match_number);
 
 		if(good_match_number < MATCHES_DESCRIPTOR_MIN_LIMIT)
 		{
@@ -703,15 +716,15 @@ int CompareMovieWithMovie(char* reference_movie, char* query_movie, char* movie_
 		
 		is_frame_in_this_clip[i] = true;
 
-		int off_size = AlignmentFrameWithinMovie(query_frame, reference_movie, raw_frame_index, DOWNSAMPLE_RATE);
+		int off_size = AlignmentFrameWithinMovie(query_frame, reference_movie, raw_frame_index);
 		//int off_size = 0;
 		cout<<"Alignment_Off_Size: "<<off_size<<endl;
 
 		//query_begin_frame 1464 total frame 2928 raw_frame 3940 off_size 1 block 20
-		int query_clip_begin_block = BinarySearchBorderLeft(query_cap,reference_cap, query_begin_frame - off_size, query_total_frame, raw_frame_index, DOWNSAMPLE_RATE, movie_folder_name);
+		int query_clip_begin_block = BinarySearchBorderLeft(query_cap,reference_cap, query_begin_frame - off_size, query_total_frame, raw_frame_index, movie_folder_name);
 
 		//query_begin_frame 1464 total frame 2928 raw_frame 3940 off_size = 1
-		int query_clip_end_block = BinarySearchBorderRight(query_cap,reference_cap, query_begin_frame - off_size, query_total_frame, raw_frame_index, DOWNSAMPLE_RATE, movie_folder_name);
+		int query_clip_end_block = BinarySearchBorderRight(query_cap,reference_cap, query_begin_frame - off_size, query_total_frame, raw_frame_index, movie_folder_name);
 
 		int blocks = query_clip_end_block - query_clip_begin_block;
 		query_start_index[i] = (query_begin_frame - off_size) % DOWNSAMPLE_RATE + DOWNSAMPLE_RATE * query_clip_begin_block;
@@ -757,6 +770,10 @@ int CompareMovieWithMovie(char* reference_movie, char* query_movie, char* movie_
 
 		const int merge_clip_max_offset_threshold = 3;
 		const int very_short_clip_block_threshold = 1;
+		const int max_gap_block_between_clips = 10;
+
+
+
 		//Step 2 extend left or right border
 		for(int k = 0 ; k < DOWNSAMPLE_RATE ; k++)
 		{
@@ -773,6 +790,7 @@ int CompareMovieWithMovie(char* reference_movie, char* query_movie, char* movie_
 			if(query_block_left_border[k] < query_begin_max_block)
 			{
 				//Validate
+				//Temporary disable validation
 				if( abs((query_block_left_border[k] - query_begin_max_block) - (query_start_index[k] - query_start_max_frame) / DOWNSAMPLE_RATE) < merge_clip_max_offset_threshold)
 				{
 					reference_start_max_frame = reference_start_index[k];
@@ -785,6 +803,7 @@ int CompareMovieWithMovie(char* reference_movie, char* query_movie, char* movie_
 			if(query_block_right_border[k] > query_end_max_block)
 			{
 				//Validate
+				//Temporary disable validation
 				if( abs((query_block_left_border[k] - query_begin_max_block) - (query_start_index[k] - query_start_max_frame) / DOWNSAMPLE_RATE) < merge_clip_max_offset_threshold)
 				{
 					reference_start_max_frame = reference_start_index[k];
@@ -795,25 +814,29 @@ int CompareMovieWithMovie(char* reference_movie, char* query_movie, char* movie_
 		}
 
 		int max_block_extended = query_end_max_block -	query_begin_max_block;
-		const int frame_per_second = 25;
+		
 
-		double validate_result = ValidateTwoMovie(query_cap,reference_cap,query_start_max_frame,reference_start_max_frame,max_block_extended,DOWNSAMPLE_RATE);
+		double validate_result = ValidateTwoMovie(query_cap,reference_cap,query_start_max_frame,reference_start_max_frame,max_block_extended);
 		
 		finish = clock(); 
 		duration = (double)(finish - start) / CLOCKS_PER_SEC;  
 		printf( "CompareMovieWithMovie : %f seconds\n", duration ); 
 
 		
-		if(validate_result > VALIDATE_THRESHOLD)
+		//Temproroy Disable the Validation
+		if(1)
+		//if(validate_result > VALIDATE_THRESHOLD)
 		{
 			cout<<"#######################################"<<endl;
-			cout<<"#FINAL RESULT"<<"Query Frame Come From:"<<query_start_max_frame<<endl;
-			cout<<"#FINAL RESULT"<<":Query_Block_Begin:"<<query_begin_max_block<<endl;
-			cout<<"#FINAL RESULT"<<":Query_Block_End:"<<query_end_max_block<<endl;
-			cout<<"#FINAL RESULT"<<":Total Time:"<<(query_end_max_block - query_begin_max_block) * DOWNSAMPLE_RATE  / frame_per_second<<"SECOND"<<endl;
+			cout<<"#FINAL RESULT"<<":Query_Time_Begin:"<<query_begin_max_block * DOWNSAMPLE_RATE  / FRAME_PER_SECOND <<endl;
+			cout<<"#FINAL RESULT"<<":Query_Time_End:"<<query_end_max_block * DOWNSAMPLE_RATE  / FRAME_PER_SECOND<<endl;
+			cout<<"#FINAL RESULT"<<":Reference_Time_Begin:"<<reference_start_max_frame   / FRAME_PER_SECOND <<endl;
+			cout<<"#FINAL RESULT"<<":Reference_Time_End:"<<(reference_start_max_frame +  query_end_max_block * DOWNSAMPLE_RATE - query_begin_max_block * DOWNSAMPLE_RATE )  / FRAME_PER_SECOND<<endl;
+			cout<<"#FINAL RESULT"<<":Total Time:"<<(query_end_max_block - query_begin_max_block) * DOWNSAMPLE_RATE  / FRAME_PER_SECOND <<"SECOND"<<endl;
 			cout<<"#######################################"<<endl;
+			fout<<query_begin_max_block * DOWNSAMPLE_RATE  / FRAME_PER_SECOND<<","<<query_end_max_block * DOWNSAMPLE_RATE  / FRAME_PER_SECOND<<endl;
 
-			PlayTwoMovie(query_cap,reference_cap,query_start_max_frame,reference_start_max_frame,max_block_extended,DOWNSAMPLE_RATE);
+			//PlayTwoMovie(query_cap,reference_cap,query_start_max_frame,reference_start_max_frame,max_block_extended);
 			
 		}
 		else
@@ -822,6 +845,7 @@ int CompareMovieWithMovie(char* reference_movie, char* query_movie, char* movie_
 			cout<<"#######################################"<<endl;
 			cout<<"#		Validation Failed			 #"<<endl;
 			cout<<"#######################################"<<endl;
+			fout<<"0,0\n";
 		}
 	}
 	else
@@ -830,29 +854,31 @@ int CompareMovieWithMovie(char* reference_movie, char* query_movie, char* movie_
 		cout<<"#######################################"<<endl;
 		cout<<"#				NOT FOUND			 #"<<endl;
 		cout<<"#######################################"<<endl;
-		
+		fout<<"0,0\n";
 	}
 
 	return 0;
 }
 
-double ValidateTwoMovie(VideoCapture query_cap, VideoCapture reference_cap, int start_query, int start_reference, int blocks,int downsample_rate)
+double ValidateTwoMovie(VideoCapture query_cap, VideoCapture reference_cap, int start_query, int start_reference, int blocks)
 {
 	Mat query_mat, reference_mat, concat_mat;
 
-	if(blocks < 10)
+	const int number_of_validate = 10;
+
+	if(blocks < number_of_validate)
 	{
 		cout<<"Validate Result: So less Blocks"<<endl;
 		return 1;
 	}
 	
-	int jump_block = blocks  / 10;
+	int jump_block = blocks  / number_of_validate;
 	int test_cases = 0;
 	int good_cases = 0;
 	for(int i = jump_block ; i < blocks ; i += jump_block)
 	{
-		int frame_in_the_reference = start_reference + i * downsample_rate;
-		int frame_in_the_query = start_query + i * downsample_rate;
+		int frame_in_the_reference = start_reference + i * DOWNSAMPLE_RATE;
+		int frame_in_the_query = start_query + i * DOWNSAMPLE_RATE;
 		query_cap.set( CV_CAP_PROP_POS_FRAMES,frame_in_the_query);
 		query_cap.read(query_mat);
 		reference_cap.set( CV_CAP_PROP_POS_FRAMES,frame_in_the_reference);
@@ -885,18 +911,18 @@ double ValidateTwoMovie(VideoCapture query_cap, VideoCapture reference_cap, int 
 
 }
 
-void PlayTwoMovie(VideoCapture query_cap, VideoCapture reference_cap, int start_query, int start_reference, int blocks,int downsample_rate)
+void PlayTwoMovie(VideoCapture query_cap, VideoCapture reference_cap, int start_query, int start_reference, int blocks)
 {
 	Mat query_mat, reference_mat, concat_mat;
 	for(int i = 0 ; i < blocks ; i++)
 	{
 		//down_sample
-		if(blocks >= 100 && i % 20 != 1)
+		if(i % DOWNSAMPLE_RATE != 1)
 		{
 			continue;
 		}
-		int frame_in_the_reference = start_reference + i * downsample_rate;
-		int frame_in_the_query = start_query + i * downsample_rate;
+		int frame_in_the_reference = start_reference + i * DOWNSAMPLE_RATE;
+		int frame_in_the_query = start_query + i * DOWNSAMPLE_RATE;
 		query_cap.set( CV_CAP_PROP_POS_FRAMES,frame_in_the_query);
 		query_cap.read(query_mat);
 		reference_cap.set( CV_CAP_PROP_POS_FRAMES,frame_in_the_reference);
@@ -926,14 +952,14 @@ void PlayTwoMovie(VideoCapture query_cap, VideoCapture reference_cap, int start_
 //2828, 5656, 7880, -5, xxx.mp4
 //2828 - 5 = 2323
 //2323 = 20 * 116 block
-int BinarySearchBorderLeft(VideoCapture query_cap, VideoCapture reference_cap,int aligned_query_begin_frame, int total_query_frame, int raw_reference_frame, int downsample_rate, char* movie_folder_name)
+int BinarySearchBorderLeft(VideoCapture query_cap, VideoCapture reference_cap,int aligned_query_begin_frame, int total_query_frame, int raw_reference_frame, char* movie_folder_name)
 {
-	int total_number_of_block = aligned_query_begin_frame / downsample_rate;
-	int reference_start = raw_reference_frame - total_number_of_block * downsample_rate;
-	int alignment_query_start = aligned_query_begin_frame - total_number_of_block * downsample_rate;
+	int total_number_of_block = aligned_query_begin_frame / DOWNSAMPLE_RATE;
+	int reference_start = raw_reference_frame - total_number_of_block * DOWNSAMPLE_RATE;
+	int alignment_query_start = aligned_query_begin_frame - total_number_of_block * DOWNSAMPLE_RATE;
 	//find the first block match the refernece
 	int start_block = 0;
-	int end_block = aligned_query_begin_frame / downsample_rate;
+	int end_block = aligned_query_begin_frame / DOWNSAMPLE_RATE;
 	//Think of the beginning of the movie may be the advertisement, or intro, we use step to get close to the front
 	double difference = 0;
 	Mat query_mat,reference_mat,concat_mat;
@@ -941,10 +967,9 @@ int BinarySearchBorderLeft(VideoCapture query_cap, VideoCapture reference_cap,in
 	{
 		//Try Half way of the movie
 		int cur_block = ceil((start_block + end_block + 0.0) / 2);
-		int frame_in_the_reference = reference_start + cur_block * downsample_rate;
-		int frame_in_the_query = alignment_query_start + cur_block * downsample_rate;
+		int frame_in_the_reference = reference_start + cur_block * DOWNSAMPLE_RATE;
+		int frame_in_the_query = alignment_query_start + cur_block * DOWNSAMPLE_RATE;
 
-		//TODO right border
 		if( frame_in_the_reference < 0 ||  frame_in_the_query < 0)
 		{
 			if(end_block - start_block == 1)
@@ -957,8 +982,15 @@ int BinarySearchBorderLeft(VideoCapture query_cap, VideoCapture reference_cap,in
 				continue;
 			}
 		}
+
+		double similar_result_cur = 0;
+		double similar_result_offset_1 = 0;
+		double similar_result_offset_2 = 0;
+
+		//Go to 16:9
 		query_cap.set( CV_CAP_PROP_POS_FRAMES,frame_in_the_query);
 		query_cap.read(query_mat);
+
 		reference_cap.set( CV_CAP_PROP_POS_FRAMES,frame_in_the_reference);
 		reference_cap.read(reference_mat);
 
@@ -974,13 +1006,52 @@ int BinarySearchBorderLeft(VideoCapture query_cap, VideoCapture reference_cap,in
 				continue;
 			}
 		}
+
+		else
+		{
+			resize(query_mat,query_mat,Size(SHOWOFF_COMPARE_SIZE_X,SHOWOFF_COMPARE_SIZE_Y), 0, 0, 1);
+			resize(reference_mat,reference_mat,Size(SHOWOFF_COMPARE_SIZE_X,SHOWOFF_COMPARE_SIZE_Y), 0, 0, 1);
+			similar_result_cur = CompareBrief(query_mat,reference_mat);
+		}
+
+		//Find another frame after this block
+		query_cap.set( CV_CAP_PROP_POS_FRAMES,frame_in_the_query + DOWNSAMPLE_RATE);
+		query_cap.read(query_mat);
+
+		reference_cap.set( CV_CAP_PROP_POS_FRAMES,frame_in_the_reference + DOWNSAMPLE_RATE);
+		reference_cap.read(reference_mat);
 		
-		//Go to 16:9
-		resize(query_mat,query_mat,Size(SHOWOFF_COMPARE_SIZE_X,SHOWOFF_COMPARE_SIZE_Y),0,0,1);
-		resize(reference_mat,reference_mat,Size(SHOWOFF_COMPARE_SIZE_X,SHOWOFF_COMPARE_SIZE_Y),0,0,1);
+		if(query_mat.cols == 0 || query_mat.rows == 0 || reference_mat.cols == 0 || reference_mat.rows == 0)
+		{
+			similar_result_offset_1 = similar_result_cur; //Bad Frame
+		}
+		else
+		{
+			resize(query_mat,query_mat,Size(SHOWOFF_COMPARE_SIZE_X,SHOWOFF_COMPARE_SIZE_Y), 0, 0, 1);
+			resize(reference_mat,reference_mat,Size(SHOWOFF_COMPARE_SIZE_X,SHOWOFF_COMPARE_SIZE_Y), 0, 0, 1);
+			similar_result_offset_1 = CompareBrief(query_mat,reference_mat);
+		}
+
+		//Find another frame after 2 blocks
+		query_cap.set( CV_CAP_PROP_POS_FRAMES,frame_in_the_query + DOWNSAMPLE_RATE * 2);
+		query_cap.read(query_mat);
+
+		reference_cap.set( CV_CAP_PROP_POS_FRAMES,frame_in_the_reference + DOWNSAMPLE_RATE * 2);
+		reference_cap.read(reference_mat);
 		
-		
-				double similar_result = CompareBrief(query_mat,reference_mat);
+		if(query_mat.cols == 0 || query_mat.rows == 0 || reference_mat.cols == 0 || reference_mat.rows == 0)
+		{
+			similar_result_offset_2 = similar_result_cur; //Bad Frame
+		}
+		else
+		{
+			resize(query_mat,query_mat,Size(SHOWOFF_COMPARE_SIZE_X,SHOWOFF_COMPARE_SIZE_Y), 0, 0, 1);
+			resize(reference_mat,reference_mat,Size(SHOWOFF_COMPARE_SIZE_X,SHOWOFF_COMPARE_SIZE_Y), 0, 0, 1);
+			similar_result_offset_2 = CompareBrief(query_mat,reference_mat);
+		}
+
+		double similar_result = (similar_result_cur + similar_result_offset_1 +similar_result_offset_2) / 3 ;
+
 		if(similar_result > SIMILARITY_THRESHOLD)
 		{
 			if(end_block - start_block == 1)
@@ -1018,16 +1089,16 @@ int BinarySearchBorderLeft(VideoCapture query_cap, VideoCapture reference_cap,in
 //2828, 5656, 7880, -5, xxx.mp4
 //2828 - 5 = 2323
 //2323 = 20 * 116 block
-int BinarySearchBorderRight(VideoCapture query_cap, VideoCapture reference_cap,int aligned_query_begin_frame, int total_query_frame, int raw_reference_frame, int downsample_rate, char* movie_folder_name)
+int BinarySearchBorderRight(VideoCapture query_cap, VideoCapture reference_cap,int aligned_query_begin_frame, int total_query_frame, int raw_reference_frame, char* movie_folder_name)
 {
-	int total_number_of_block = aligned_query_begin_frame / downsample_rate;
-	int reference_start = raw_reference_frame - total_number_of_block * downsample_rate;
-	int alignment_query_start = aligned_query_begin_frame - total_number_of_block * downsample_rate;
+	int total_number_of_block = aligned_query_begin_frame / DOWNSAMPLE_RATE;
+	int reference_start = raw_reference_frame - total_number_of_block * DOWNSAMPLE_RATE;
+	int alignment_query_start = aligned_query_begin_frame - total_number_of_block * DOWNSAMPLE_RATE;
 
 
 	//find the first block match the refernece
-	int start_block = aligned_query_begin_frame / downsample_rate;
-	int end_block = total_query_frame / downsample_rate;
+	int start_block = aligned_query_begin_frame / DOWNSAMPLE_RATE;
+	int end_block = total_query_frame / DOWNSAMPLE_RATE;
 	//Think of the beginning of the movie may be the advertisement, or intro, we use step to get close to the front
 	Mat query_mat,reference_mat,concat_mat;
 
@@ -1036,24 +1107,8 @@ int BinarySearchBorderRight(VideoCapture query_cap, VideoCapture reference_cap,i
 	{
 		//Try Half way of the movie
 		int cur_block = ceil((start_block + end_block + 0.0) / 2);
-		int frame_in_the_reference = reference_start + cur_block * downsample_rate;
-		int frame_in_the_query = alignment_query_start + cur_block * downsample_rate;
-		/*
-		if( frame_in_the_reference < 0 ||  frame_in_the_query < 0)
-		{
-			if(end_block - start_block == 1)
-			{
-				return start_block;
-			}
-			else
-			{
-				end_block = cur_block;
-				continue;
-			}
-		}
-		*/
-		query_cap.set( CV_CAP_PROP_POS_FRAMES,frame_in_the_query);
-		query_cap.read(query_mat);
+		int frame_in_the_reference = reference_start + cur_block * DOWNSAMPLE_RATE;
+		int frame_in_the_query = alignment_query_start + cur_block * DOWNSAMPLE_RATE;
 
 		if(frame_in_the_reference > reference_frame_total)
 		{
@@ -1068,9 +1123,17 @@ int BinarySearchBorderRight(VideoCapture query_cap, VideoCapture reference_cap,i
 			continue;
 		}
 
+		double similar_result_cur = 0;
+		double similar_result_offset_1 = 0;
+		double similar_result_offset_2 = 0;
+
+		//Go to 16:9
+		query_cap.set( CV_CAP_PROP_POS_FRAMES,frame_in_the_query);
+		query_cap.read(query_mat);
+
 		reference_cap.set( CV_CAP_PROP_POS_FRAMES,frame_in_the_reference);
 		reference_cap.read(reference_mat);
-		
+
 		if(query_mat.cols == 0 || query_mat.rows == 0 || reference_mat.cols == 0 || reference_mat.rows == 0)
 		{
 			//Not Found
@@ -1084,13 +1147,51 @@ int BinarySearchBorderRight(VideoCapture query_cap, VideoCapture reference_cap,i
 				continue;
 			}
 		}
+		else
+		{
+			resize(query_mat,query_mat,Size(SHOWOFF_COMPARE_SIZE_X,SHOWOFF_COMPARE_SIZE_Y), 0, 0, 1);
+			resize(reference_mat,reference_mat,Size(SHOWOFF_COMPARE_SIZE_X,SHOWOFF_COMPARE_SIZE_Y), 0, 0, 1);
+			similar_result_cur = CompareBrief(query_mat,reference_mat);
+		}
 
-		//Go to 16:9
-		resize(query_mat,query_mat,Size(SHOWOFF_COMPARE_SIZE_X,SHOWOFF_COMPARE_SIZE_Y), 0, 0, 1);
-		resize(reference_mat,reference_mat,Size(SHOWOFF_COMPARE_SIZE_X,SHOWOFF_COMPARE_SIZE_Y), 0, 0, 1);
+		//Find another frame after this block
+		query_cap.set( CV_CAP_PROP_POS_FRAMES,frame_in_the_query + DOWNSAMPLE_RATE);
+		query_cap.read(query_mat);
+
+		reference_cap.set( CV_CAP_PROP_POS_FRAMES,frame_in_the_reference + DOWNSAMPLE_RATE);
+		reference_cap.read(reference_mat);
 		
+		if(query_mat.cols == 0 || query_mat.rows == 0 || reference_mat.cols == 0 || reference_mat.rows == 0)
+		{
+			similar_result_offset_1 = similar_result_cur; //Bad Frame
+		}
+		else
+		{
+			resize(query_mat,query_mat,Size(SHOWOFF_COMPARE_SIZE_X,SHOWOFF_COMPARE_SIZE_Y), 0, 0, 1);
+			resize(reference_mat,reference_mat,Size(SHOWOFF_COMPARE_SIZE_X,SHOWOFF_COMPARE_SIZE_Y), 0, 0, 1);
+			similar_result_offset_1 = CompareBrief(query_mat,reference_mat);
+		}
 
-		double similar_result = CompareBrief(query_mat,reference_mat);
+		//Find another frame after 2 blocks
+		query_cap.set( CV_CAP_PROP_POS_FRAMES,frame_in_the_query + DOWNSAMPLE_RATE * 2);
+		query_cap.read(query_mat);
+
+		reference_cap.set( CV_CAP_PROP_POS_FRAMES,frame_in_the_reference + DOWNSAMPLE_RATE * 2);
+		reference_cap.read(reference_mat);
+		
+		if(query_mat.cols == 0 || query_mat.rows == 0 || reference_mat.cols == 0 || reference_mat.rows == 0)
+		{
+			similar_result_offset_2 = similar_result_cur; //Bad Frame
+		}
+		else
+		{
+			resize(query_mat,query_mat,Size(SHOWOFF_COMPARE_SIZE_X,SHOWOFF_COMPARE_SIZE_Y), 0, 0, 1);
+			resize(reference_mat,reference_mat,Size(SHOWOFF_COMPARE_SIZE_X,SHOWOFF_COMPARE_SIZE_Y), 0, 0, 1);
+			similar_result_offset_2 = CompareBrief(query_mat,reference_mat);
+		}
+
+		double similar_result = (similar_result_cur + similar_result_offset_1 +similar_result_offset_2) / 3 ;
+
 		if(similar_result > SIMILARITY_THRESHOLD)
 		{
 			if(end_block - start_block == 1)
@@ -1207,7 +1308,7 @@ void preprocessing(char* video_path, char* output_folder_name)
 	long i = 10000000L; 
 	start = clock();
 
-	PersistOnDisk(video_path,output_folder_name,DOWNSAMPLE_RATE);
+	PersistOnDisk(video_path,output_folder_name);
 
 	finish = clock(); 
 	duration = (double)(finish - start) / CLOCKS_PER_SEC;  
@@ -1215,7 +1316,7 @@ void preprocessing(char* video_path, char* output_folder_name)
 
 }
 
-int AlignmentFrameWithinMovie(Mat query_mat, char* movie_path, int raw_frame_index, int downsample_rate)
+int AlignmentFrameWithinMovie(Mat query_mat, char* movie_path, int raw_frame_index)
 {
 	cv::VideoCapture reference_cap(movie_path);    
   
@@ -1223,8 +1324,8 @@ int AlignmentFrameWithinMovie(Mat query_mat, char* movie_path, int raw_frame_ind
         cout<<"ERROR"<<endl; 
     }  
 
-	long start_frame = (raw_frame_index - downsample_rate) >= 0 ? (raw_frame_index - downsample_rate) : 0;
-	long end_frame   = (raw_frame_index + downsample_rate) <= 1000000 ? (raw_frame_index + downsample_rate) : CV_CAP_PROP_FRAME_COUNT;
+	long start_frame = (raw_frame_index - DOWNSAMPLE_RATE) >= 0 ? (raw_frame_index - DOWNSAMPLE_RATE) : 0;
+	long end_frame   = (raw_frame_index + DOWNSAMPLE_RATE) <= 1000000 ? (raw_frame_index + DOWNSAMPLE_RATE) : CV_CAP_PROP_FRAME_COUNT;
 	
 	int offsize = 0;
 	double best_match_proprotion = 0;
@@ -1437,7 +1538,7 @@ void do_demo()
 	char* r[3] = {"Reference1", "Reference2", "Reference3"};
 	char* reference; 
 	char* query;
-	
+	/*
 	//BW
 	reference = "F:\\reference_3min\\TMJ.mp4";
 	query = "F:\\DataSet_updated\\BW\\TMJ_BW.mp4";
@@ -1476,13 +1577,16 @@ void do_demo()
 	reference = "F:\\reference_3min\\DTNRD.mp4";
 	query = "F:\\Enhancement\\Luminance\\40\\DTNRD_Luminance40.mp4";
 	CompareMovieWithMovie(reference,query,r[0]);
+	
 	//Contrast
 	query = "F:\\Enhancement\\Contrast\\-20\\DTNRD_Contrast-20.mp4";
 	CompareMovieWithMovie(reference,query,r[0]);
+	*/	
 	//Real-Senaries
-	reference = "F:\\GOT01.mp4";
-	query = "F:\\test.mp4";
-	CompareMovieWithMovie(reference ,query,"GameOfThroneS05Ep01");
+	reference = "F:\\1.flv";
+	query = "F:\\2.flv";
+	preprocessing(reference,"REF1");
+	CompareMovieWithMovie(reference ,query,"REF1");
 }
 
 void do_paper()
@@ -1494,12 +1598,124 @@ void do_paper()
 	CompareBrief(x1,x2,true,"paper.jpg");
 }
 
+void do_test_automation(string input_folder_name)
+{
+	//Read_Information
+
+	int all_retrived_num = 0;
+	int all_ground_truth_num = 0;
+	int correct_retrived_num = 0;
+
+	//annotation_input_file_name = "F:\\VideoDataSet_30\\core_dataset\\annotation\\" + input_folder_name + ".txt";
+	annotation_input_file_name = "F:\\VideoDataSet_30\\core_dataset\\annotation_5%\\" + input_folder_name + ".txt";
+
+    ifstream fin(annotation_input_file_name);  
+	
+	fout<<"#################"<<input_folder_name<<"##############"<<endl;
+
+    string s;  
+    while( fin >> s ) 
+    {     
+		vector<string> string_array;
+		SplitString(s,string_array,",");
+
+		string str_reference = "F:\\VideoDataSet_30\\core_dataset\\core_dataset\\" + input_folder_name + "\\" + string_array[0];
+		string str_query =  "F:\\VideoDataSet_30\\core_dataset\\core_dataset\\" + input_folder_name + "\\" + string_array[1];
+
+		const char * reference = str_reference.data();
+		const char * query = str_query.data();
+
+		char ref[256];
+		char que[256];
+		char ref_fol[256];
+
+		char result[1024];
+
+		strncpy(ref,reference,255);
+		strncpy(que,query,255);
+		
+		string cmd = "md F:\\KEYPOINTS\\" +  string_array[0];
+		system(cmd.data());
+
+		strncpy(ref_fol,string_array[0].data(),255);
+
+		string result_string = string_array[0]+","+string_array[1]+","+string_array[4]+","+string_array[5]+",";
+		strncpy(result,result_string.data(),1023);
+		fout<<result;
+
+		if(string_array[0] == string_array[1])
+		{
+			preprocessing(ref,ref_fol);
+		}
+
+		CompareMovieWithMovie(ref,que,ref_fol);
+		
+    }
+	fout<<"#########################################################"<<endl;
+	/*
+	char* reference; 
+	char* query;
+	reference = "F:\\VideoDataSet_30\\core_dataset\\core_dataset\\beautiful_mind_game_theory\\46f2e964ae16f5c27fad70d6849c76616fad7502.flv";
+	query =     "F:\\VideoDataSet_30\\core_dataset\\core_dataset\\beautiful_mind_game_theory\\904c8ebf782357ae78ebd205fe3428ad76b975a5.flv";
+	preprocessing(reference,"REF");
+	CompareMovieWithMovie(reference ,query,"REF");
+	*/
+}
+
+void do_some_error_detection(char* ref, char* query, char* keypoint)
+{
+
+	CompareMovieWithMovie(ref,query,keypoint);
+}
+
 int _tmain(int argc, _TCHAR* argv[])
 {
 	//test();
 	//do_demo();
-	do_paper();
+	//do_paper();
+	
+	/*
+	do_test_automation("beautiful_mind_game_theory");
+	do_test_automation("bill_clinton_apology_speech");
+	do_test_automation("bolt_beijing_100m");
+	do_test_automation("brazil_vs_brazil_nike_commercial_2012");
+	do_test_automation("david_beckham_lights_the_olympic_torch");
+	do_test_automation("dove_evolution_commercial");
+	do_test_automation("endless_love");
+	do_test_automation("infernal_affairs_1");
+	do_test_automation("kennedy_assassination_slow_motion");
+	do_test_automation("maradona_hand_of_god");
+	do_test_automation("mr_and_mrs_smith_tango");
+	do_test_automation("obama_kicks_door");
+	do_test_automation("osama_bin_laden_is_dead_obama_speech_at_white_house");
+	do_test_automation("president_obama_takes_oath");
+	do_test_automation("ronaldinho_ping_pong");
+	do_test_automation("run_forrest_fun");
+	do_test_automation("saving_private_ryan_omaha_beach");
+	do_test_automation("scent_of_woman_tango");
+	do_test_automation("the_last_samurai_last_battle");
+	do_test_automation("the_legend_of_1900_magic_waltz");
+	do_test_automation("the_pursuit_of_happyness_-_job_interview");
+	
+
+	do_test_automation("tom_hanks_winning_an_oscar");
+	do_test_automation("troy_achilles_and_hector");
+	do_test_automation("zidane_headbutt");
+	do_test_automation("bolt_beijing_100m");
+	do_test_automation("baggio_penalty_1994");
+	do_test_automation("beckham_70_yard_goal");
+	do_test_automation("titanic_fly_scene");
+	do_test_automation("t-mac_13_points_in_35_seconds");
+	
+	*/
+
+	char *ref = "F:\\VideoDataSet_30\\core_dataset\\core_dataset\\scent_of_woman_tango\\136eff8ef85eee42b2370ad6e444498980ba63a8.mp4";
+	char *que = "F:\\VideoDataSet_30\\core_dataset\\core_dataset\\scent_of_woman_tango\\b9d57bdc2d729020825f9617089e1aee6be798fe.flv";
+	char *key = "136eff8ef85eee42b2370ad6e444498980ba63a8.mp4";
+	do_some_error_detection(ref,que,key);
+
 	cin.get();
+
 
 	return EXIT_SUCCESS;
 }
